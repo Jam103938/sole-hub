@@ -169,6 +169,7 @@ local EggToggle = Tab:CreateToggle({
       end
    end,
 })
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ToggleActive = false
@@ -184,54 +185,48 @@ local Toggle = Tab:CreateToggle({
 				local LocalPlayer = Players.LocalPlayer
 				local Backpack = LocalPlayer:WaitForChild("Backpack")
 				local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-				local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+				local equipped = false
+
+				for _, item in ipairs(Backpack:GetChildren()) do
+					if item:IsA("Tool") and item:FindFirstChild("Weight") then
+						local name = item.Name
+						if string.find(name, "Pollinated") and tonumber(item.Weight.Value) >= 10 then
+							item.Parent = Character
+							equipped = true
+							break
+						end
+					end
+				end
+
+				if not equipped then return end
+
+				task.wait(0.5)
 				local arrowTarget = workspace.Interaction.UpdateItems.HoneyEvent:FindFirstChild("Arrow")
 				if not arrowTarget then return end
 
 				local targetPart = arrowTarget:GetChildren()[2]
 				if not targetPart then return end
 
-				local lockPosition = targetPart.Position + Vector3.new(2, 0, 0)
-				HumanoidRootPart.Anchored = true
-				HumanoidRootPart.CFrame = CFrame.new(lockPosition)
+				local hrp = Character:WaitForChild("HumanoidRootPart")
+				hrp.CFrame = targetPart.CFrame + Vector3.new(2, 0, 0)
 
-				while ToggleActive do
-					local equipped = false
-					for _, item in ipairs(Backpack:GetChildren()) do
-						if item:IsA("Tool") and item:FindFirstChild("Weight") then
-							local name = item.Name
-							if string.find(name, "Pollinated") and tonumber(item.Weight.Value) >= 10 then
-								item.Parent = Character
-								equipped = true
-								break
-							end
-						end
-					end
+				task.wait(3)
 
-					if not equipped then
-						for i = 1, 5 do
-							if not ToggleActive then break end
-							task.wait(1)
-						end
-						continue
-					end
+				local args = { "MachineInteract" }
+				ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("HoneyMachineService_RE"):FireServer(unpack(args))
 
-					task.wait(3)
-
-					local args = { "MachineInteract" }
-					ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("HoneyMachineService_RE"):FireServer(unpack(args))
-
-					for i = 1, 182 do
-						if not ToggleActive then break end
-						task.wait(1)
-					end
-
-					if ToggleActive then
-						ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("HoneyMachineService_RE"):FireServer(unpack(args))
-					end
+				for i = 1, 183 do
+					if not ToggleActive then return end
+					task.wait(1)
 				end
 
-				HumanoidRootPart.Anchored = false
+				if ToggleActive then
+					ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("HoneyMachineService_RE"):FireServer(unpack(args))
+				end
+
+				while ToggleActive do
+					task.wait(1)
+				end
 			end)
 		end
 	end,
