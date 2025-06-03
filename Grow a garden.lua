@@ -31,7 +31,6 @@ local Window = Rayfield:CreateWindow({
 
 local Tab = Window:CreateTab("Main Tab", 4483362458)
 local Misc = Window:CreateTab("Misc tab", 4483362458)
-
 local Button = Tab:CreateButton({
    Name = "Our discord(thanks for joining)",
    Callback = function()
@@ -170,89 +169,70 @@ local EggToggle = Tab:CreateToggle({
       end
    end,
 })
-
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
+local ToggleActive = false
 
-local function findEggOnMyFarm()
-	local farmFolder = workspace:FindFirstChild("Farm")
-	if not farmFolder then return end
-
-	for _, farm in ipairs(farmFolder:GetChildren()) do
-		local important = farm:FindFirstChild("Important")
-		local data = important and important:FindFirstChild("Data")
-		if not data then continue end
-
-		local owner = data:FindFirstChild("Owner")
-		local farmNumber = tonumber((data:FindFirstChild("Farm_Number") or {}).Value or 0)
-
-		if owner and owner.Value == LocalPlayer.Name and farmNumber >= 1 and farmNumber <= 6 then
-			local objects = important:FindFirstChild("Objects_Physical")
-			if objects then
-				for _, obj in ipairs(objects:GetChildren()) do
-					if obj:IsA("Model") then
-						return obj
-					end
-				end
-			end
-		end
-	end
-end
-
-local Toggle = Tab:CreateToggle({ 
-	Name = "Hatch Egg on Head",
+local Toggle = Tab:CreateToggle({
+	Name = "Auto Honey Machine",
 	CurrentValue = false,
-	Flag = "HatchOnHead",
+	Flag = "Toggle1",
 	Callback = function(Value)
-		if Value then
-			local eggModel = findEggOnMyFarm()
-			if eggModel then
-				for _, part in ipairs(eggModel:GetDescendants()) do
-					if part:IsA("BasePart") then
-						part.CanCollide = false
+		ToggleActive = Value
+		if ToggleActive then
+			task.spawn(function()
+				local LocalPlayer = Players.LocalPlayer
+				local Backpack = LocalPlayer:WaitForChild("Backpack")
+				local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+				local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+				local arrowTarget = workspace.Interaction.UpdateItems.HoneyEvent:FindFirstChild("Arrow")
+				if not arrowTarget then return end
+
+				local targetPart = arrowTarget:GetChildren()[2]
+				if not targetPart then return end
+
+				local lockPosition = targetPart.Position + Vector3.new(2, 0, 0)
+				HumanoidRootPart.Anchored = true
+				HumanoidRootPart.CFrame = CFrame.new(lockPosition)
+
+				while ToggleActive do
+					local equipped = false
+					for _, item in ipairs(Backpack:GetChildren()) do
+						if item:IsA("Tool") and item:FindFirstChild("Weight") then
+							local name = item.Name
+							if string.find(name, "Pollinated") and tonumber(item.Weight.Value) >= 10 then
+								item.Parent = Character
+								equipped = true
+								break
+							end
+						end
+					end
+
+					if not equipped then
+						for i = 1, 5 do
+							if not ToggleActive then break end
+							task.wait(1)
+						end
+						continue
+					end
+
+					task.wait(3)
+
+					local args = { "MachineInteract" }
+					ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("HoneyMachineService_RE"):FireServer(unpack(args))
+
+					for i = 1, 182 do
+						if not ToggleActive then break end
+						task.wait(1)
+					end
+
+					if ToggleActive then
+						ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("HoneyMachineService_RE"):FireServer(unpack(args))
 					end
 				end
 
-				local head = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
-				if head then
-					if not eggModel.PrimaryPart then
-						eggModel.PrimaryPart = eggModel:FindFirstChildWhichIsA("BasePart")
-					end
-					if eggModel.PrimaryPart then
-						eggModel:SetPrimaryPartCFrame(head.CFrame)
-					end
-				end
-
-				local args = {
-					"HatchPet",
-					eggModel
-				}
-				ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetEggService"):FireServer(unpack(args))
-			end
-		end
-	end
-})
-
-
-
-local Button = Misc:CreateButton({
-	Name = "Toggle Seed Shop(press again to close)",
-	Callback = function()
-		local seedgui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("Seed_Shop")
-		if seedgui then
-			seedgui.Enabled = not seedgui.Enabled
-		end
-	end,
-})
-
-local Button = Misc:CreateButton({
-	Name = "Toggle Gear Shop(press again to close)",
-	Callback = function()
-		local geargui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("Gear_Shop").Enabled
-		if geargui then
-			geargui.Enabled = not geargui.Enabled
+				HumanoidRootPart.Anchored = false
+			end)
 		end
 	end,
 })
